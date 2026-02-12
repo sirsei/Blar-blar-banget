@@ -1,0 +1,139 @@
+local ScreenGui = Instance.new("ScreenGui")
+local MainFrame = Instance.new("Frame")
+local Title = Instance.new("TextLabel")
+local StartStopBtn = Instance.new("TextButton")
+local CancelBtn = Instance.new("TextButton") -- Tombol Baru
+local CloseBtn = Instance.new("TextButton")
+local JedaLemparInput = Instance.new("TextBox")
+local JedaCompleteInput = Instance.new("TextBox")
+local StatusLabel = Instance.new("TextLabel")
+
+-- Anti-Duplicate
+if game.CoreGui:FindFirstChild("GlobalSpammerV15") then game.CoreGui.GlobalSpammerV15:Destroy() end
+
+ScreenGui.Parent = game.CoreGui
+ScreenGui.Name = "GlobalSpammerV15"
+
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+MainFrame.Size = UDim2.new(0, 220, 0, 320) -- Ukuran ditambah biar muat
+MainFrame.Position = UDim2.new(0.5, -110, 0.5, -160)
+MainFrame.Active = true
+MainFrame.Draggable = true
+
+local function createInput(placeholder, default, pos)
+    local input = Instance.new("TextBox", MainFrame)
+    input.PlaceholderText = placeholder
+    input.Text = default
+    input.Size = UDim2.new(0, 180, 0, 35)
+    input.Position = UDim2.new(0.1, 0, 0, pos)
+    input.BackgroundColor3 = Color3.fromRGB(30, 35, 45)
+    input.TextColor3 = Color3.fromRGB(255, 255, 255)
+    input.BorderSizePixel = 0
+    return input
+end
+
+Title.Parent = MainFrame
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.Text = "BLAR BLARR BLARRR"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+
+JedaLemparInput = createInput("Jeda Per Lempar (s)", "0.05", 55)
+JedaCompleteInput = createInput("Jeda Complete (s)", "0.23", 105)
+
+-- Tombol Start/Stop
+StartStopBtn.Parent = MainFrame
+StartStopBtn.Size = UDim2.new(0, 180, 0, 45)
+StartStopBtn.Position = UDim2.new(0.1, 0, 0, 155)
+StartStopBtn.Text = "GAS YANG"
+StartStopBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 120)
+StartStopBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+StartStopBtn.Font = Enum.Font.SourceSansBold
+StartStopBtn.TextSize = 16
+
+-- Tombol Cancel Manual
+CancelBtn.Parent = MainFrame
+CancelBtn.Size = UDim2.new(0, 180, 0, 35)
+CancelBtn.Position = UDim2.new(0.1, 0, 0, 210)
+CancelBtn.Text = "CANCEL FISHING"
+CancelBtn.BackgroundColor3 = Color3.fromRGB(200, 100, 0)
+CancelBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CancelBtn.Font = Enum.Font.SourceSansBold
+CancelBtn.TextSize = 14
+
+StatusLabel.Parent = MainFrame
+StatusLabel.Size = UDim2.new(1, 0, 0, 30)
+StatusLabel.Position = UDim2.new(0, 0, 0, 260)
+StatusLabel.Text = "Status: Idle"
+StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+StatusLabel.BackgroundTransparency = 1
+
+CloseBtn.Parent = MainFrame
+CloseBtn.Size = UDim2.new(0, 25, 0, 25)
+CloseBtn.Position = UDim2.new(1, -25, 0, 0)
+CloseBtn.Text = "X"
+CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+
+--- CORE LOGIC ---
+
+local isRunning = false
+local NetPath = game:GetService("ReplicatedStorage"):WaitForChild("Packages"):WaitForChild("_Index"):WaitForChild("sleitnick_net@0.2.0"):WaitForChild("net")
+
+local customArgs = {
+    -1.233184814453125,
+    0.538660755560776,
+    1770900781.394312
+}
+
+local function runFishingNoCancel()
+    while isRunning do
+        local jedaLempar = tonumber(JedaLemparInput.Text) or 0.05
+        local jedaComplete = tonumber(JedaCompleteInput.Text) or 0.23
+        
+        pcall(function()
+            task.spawn(function()
+                NetPath:WaitForChild("RF/ChargeFishingRod"):InvokeServer(nil, nil, 1770738404.0267, nil)
+                for i = 1, 3 do
+                    NetPath:WaitForChild("RF/RequestFishingMinigameStarted"):InvokeServer(unpack(customArgs))
+                end
+            end)
+            
+            task.wait(jedaLempar)
+            
+            task.spawn(function()
+                for i = 1, 5 do
+                    NetPath:WaitForChild("RE/FishingCompleted"):FireServer()
+                end
+            end)
+            
+            task.wait(jedaComplete)
+        end)
+        task.wait(0.01)
+    end
+end
+
+-- Fungsi Cancel Manual
+CancelBtn.MouseButton1Click:Connect(function()
+    pcall(function()
+        NetPath:WaitForChild("RF/CancelFishingInputs"):InvokeServer(nil)
+        StatusLabel.Text = "Manual Cancel Sent!"
+        task.wait(0.5)
+        if isRunning then StatusLabel.Text = "Status: Running" else StatusLabel.Text = "Status: Idle" end
+    end)
+end)
+
+StartStopBtn.MouseButton1Click:Connect(function()
+    isRunning = not isRunning
+    StartStopBtn.Text = isRunning and "STOP" or "GAS LAGI"
+    StartStopBtn.BackgroundColor3 = isRunning and Color3.fromRGB(200, 0, 0) or Color3.fromRGB(0, 180, 120)
+    if isRunning then 
+        StatusLabel.Text = "Status: Running"
+        task.spawn(runFishingNoCancel) 
+    else
+        StatusLabel.Text = "Stopped"
+    end
+end)
+
+CloseBtn.MouseButton1Click:Connect(function() isRunning = false ScreenGui:Destroy() end)
